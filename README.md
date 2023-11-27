@@ -14,3 +14,11 @@ python3 -m venv venv
 source venv/bin/activate
 pip install requirements.txt
 ```
+
+### Setting up the Libraries
+```bash
+git submodule update --init --recursive
+cd libs/libdatachannel/
+cmake -B build -DCMAKE_BUILD_TYPE=Release
+make
+```
