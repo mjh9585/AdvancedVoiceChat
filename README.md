@@ -12,7 +12,7 @@ To setup the project run :
 ```bash
 python3 -m venv venv
 source venv/bin/activate
-pip install requirements.txt
+pip install -r requirements.txt
 ```
 
 ### Setting up the Libraries
