@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Test Page - Advanced Voice Chat</title>
+    <style>
+        div.selector {
+            display: inline-block;
+            margin: 0 0 1em 0;
+        }
+
+        label {
+            width: 12em;
+            display: inline-block;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Advanced Voice chat Test Page</h1>
+
+    <h2>Options</h2>
+
+    <div class="selector">
+        <label for="audioSource">Audio input source: </label>
+        <select id="audioSource"></select>
+    </div>
+
+    <div class="selector">
+        <label for="audioDestination">Audio output destination: </label>
+        <select id="audioDestination"></select>
+    </div>
+
+    <div class="buttonControls">
+        <button id="startStream">Start</button>
+        <button id="stopStream">Stop</button>
+        <button id="refreshProperties">Refresh Properties</button>
+    </div>
+
+    <!-- <div class="option">
+        <input id="use-stun" type="checkbox" />
+        <label for="use-stun">Use STUN server</label>
+    </div>
+    <button id="start" onclick="start()" disabled>Start</button>
+    <button id="stop" style="display: none" onclick="stop()">Stop</button> -->
+
+    <h2>Audio Device Info:</h2>
+    <h3>Devices:</h3>
+    <pre id="deviceList"></pre>
+
+    <h3>Audio input properties:</h3>
+    <pre id="audioSourceProp"></pre>
+
+    <h3>Audio output properties:</h3>
+    <pre id="audioDestinationProp"></pre>
+
+    <h2>WebRTC State</h2>
+    <p>ICE Connection state: <span id="ice-connection-state"></span></p>
+    <p>ICE Gathering state: <span id="ice-gathering-state"></span></p>
+    <p>Signaling state: <span id="signaling-state"></span></p>
+
+    <div id="media" style="display: none">
+        <h2>Media</h2>
+        <audio id="audio" autoplay></audio>
+    </div>
+
+    <h2>Data Channel</h2>
+    <pre id="data-channel" style="height: 200px;"></pre>
+
+    <h2>SDP</h2>
+
+    <h3>Offer</h3>
+    <pre id="offer-sdp"></pre>
+
+    <h3>Answer</h3>
+    <pre id="answer-sdp"></pre>
+
+    <script src="client.js"></script>
+</body>
+
+</html>
