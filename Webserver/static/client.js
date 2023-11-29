@@ -1,4 +1,6 @@
-// Page Elements
+// ################################
+// #####     Page Elements     ####
+// ################################
 const audioSourceSelector = document.querySelector("select#audioSource");
 const audioDestinationSelector = document.querySelector("select#audioDestination");
 const selectors = [audioSourceSelector, audioDestinationSelector];
@@ -8,13 +10,30 @@ const startButton = document.querySelector("#startStream");
 const stopButton = document.querySelector("#stopStream");
 const refreshProperties = document.querySelector("#refreshProperties");
 
+const sdpInstuctionElement = document.querySelector("#sdpInstuctions");
+const sdpTextBoxElement = document.querySelector("#sdpTextBox");
+
+//debug device elements:
+const deviceList = document.querySelector("#deviceList");
+const audioSourceProp = document.querySelector("#audioSourceProp");
+const audioDestinationProp = document.querySelector("#audioDestinationProp");
+
+//debug WebRTC elements
+const iceConnectionLog = document.querySelector('#ice-connection-state');
+const iceGatheringLog = document.querySelector('#ice-gathering-state');
+const signalingLog = document.querySelector('#signaling-state');
+const dataChannelLog = document.querySelector('#data-channel');
+
 //vars
 var audioStream = null;
 var isStreaming = false;
+let pc = null;
 
+// #####################################
+// #####   Device Selection Menus   ####
+// #####################################
 //Audio Device Selection
 function updateDevices(devices){
-    const deviceList = document.querySelector("#deviceList");
     const values = selectors.map(select => select.value);
     selectors.forEach(select => {
         while (select.firstChild) {
@@ -26,7 +45,7 @@ function updateDevices(devices){
     deviceList.textContent=""; 
 
     devices.forEach((device) => {
-        // console.log(`\t${device.kind}: ${device.label}, id='${device.label}'`)
+        console.log(`\t${device.kind}: ${device.label}, id='${device.label}'`)
         deviceList.append(`${device.kind}: ${device.label}, id='${device.label}'\n`);
 
         const option = document.createElement("option");
@@ -53,9 +72,6 @@ function updateDevices(devices){
 }
 
 function displayAudioProperties(){
-    const audioSourceProp = document.querySelector("#audioSourceProp");
-    const audioDestinationProp = document.querySelector("#audioDestinationProp");
-    
     //Audio Inputs
     if(audioStream){
         audioSourceProp.textContent = ""
@@ -84,19 +100,80 @@ function displayAudioProperties(){
         const audioDevice = devices.find((device) => device.label === audioDest);
 
         audioDestinationProp.textContent = ""
-        audioDestinationProp.append(`deviceId=${audioDevice.deviceId}\n`)
-        audioDestinationProp.append(`groupId=${audioDevice.groupId}\n`)
-        audioDestinationProp.append(`kind=${audioDevice.kind}\n`)
-        audioDestinationProp.append(`label=${audioDevice.label}\n`)
+        
+        if(audioDevice){
+            audioDestinationProp.append(`deviceId=${audioDevice.deviceId}\n`)
+            audioDestinationProp.append(`groupId=${audioDevice.groupId}\n`)
+            audioDestinationProp.append(`kind=${audioDevice.kind}\n`)
+            audioDestinationProp.append(`label=${audioDevice.label}\n`)
+        }
     });
 }
 
-function getStream(stream) {
+// #######################################
+// #####   WebRTC Connection/Stream   ####
+// #######################################
+function createPeerConnection(){
+    const config = {
+        bundlePolicy: "max-bundle",
+    }
+    let pc = new RTCPeerConnection(config);
+
+    pc.oniceconnectionstatechange = () => {
+        iceConnectionLog.textContent += ' -> ' + pc.iceConnectionState;
+    }
+    iceConnectionLog.textContent = pc.iceConnectionState;
+
+    //TODO replace with websocket!
+    pc.onicegatheringstatechange = () => {
+        //temp text box sdp negotiation
+        if(pc.iceGatheringState === 'complete'){
+            const ans = pc.localDescription;
+            sdpInstuctionElement.value = "Paste answer into application."
+            sdpTextBoxElement.value = JSON.stringify({type: ans.type, sdp: ans.sdp});
+            alert(sdpInstuctionElement.value);
+        }
+
+        iceGatheringLog.textContent += ' -> ' + pc.iceGatheringState;
+    }
+    iceGatheringLog.textContent = pc.iceGatheringState;
+
+    pc.onsignalingstatechange = () => {
+        signalingLog.textContent += ' -> ' + pc.signalingState
+    }
+    signalingLog.textContent = pc.signalingState;
+
+    pc.ontrack = (evt) => {
+        console.log("pc track event:", evt);
+        audioElement.srcObject = evt.streams[0];
+    }
+
+    return pc
+}
+
+async function getStream(stream) {
     console.log(stream.getTracks());
     audioStream = stream
-    audioElement.srcObject = stream;
+    // audioElement.srcObject = stream;
 
     displayAudioProperties();
+
+    //setup WebRTC
+    pc = createPeerConnection()
+
+    //receive offer
+    const offer = JSON.parse(sdpTextBoxElement.value);
+    document.getElementById('offer-sdp').textContent = offer.sdp;
+    await pc.setRemoteDescription(offer);
+
+    //add audio from device
+    stream.getTracks().forEach(track => pc.addTrack(track, stream));
+
+    //send answer
+    const answer = await pc.createAnswer();
+    pc.setLocalDescription(answer);
+
+    document.getElementById('answer-sdp').textContent = answer.sdp;
     return navigator.mediaDevices.enumerateDevices();
 }
 
@@ -155,12 +232,16 @@ function start(){
 
         console.log(constraints);
 
-        navigator.mediaDevices.getUserMedia(constraints).then(getStream).then(updateDevices).catch(handleError);
+        navigator.mediaDevices.getUserMedia(constraints).then(getStream).then(updateDevices);//.catch(handleError);
     });
     isStreaming = true;
     changeOutput();
 }
 
+//prompt permissions:
+navigator.mediaDevices.getUserMedia({audio: true}).then((stream)=>{stream.getTracks().forEach(track => {
+    track.stop();
+})});
 //Page Setup
 navigator.mediaDevices.enumerateDevices().then(updateDevices).catch(handleError);
 
@@ -168,6 +249,11 @@ navigator.mediaDevices.enumerateDevices().then(updateDevices).catch(handleError)
 audioSourceSelector.onchange = changeInput;
 audioDestinationSelector.onchange = changeOutput;
 
+function refreshDevices(){
+    navigator.mediaDevices.enumerateDevices().then(updateDevices)
+}
+
+
 startButton.onclick = start;
 stopButton.onclick = stop;
-refreshProperties.onclick = displayAudioProperties;
+refreshProperties.onclick = refreshDevices;
