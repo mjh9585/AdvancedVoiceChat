@@ -1,5 +1,5 @@
 from flask import Flask, render_template, request, session, redirect, url_for
-from flask import SocketIO, emit
+# from flask import SocketIO, emit
 from flask_sock import Sock
 
 app = Flask(__name__)
@@ -10,7 +10,8 @@ sock = Sock(app)
 users = {}
 
 
-@app.route('/', '/index')
+@app.route('/')
+@app.route('/index')
 def index():
     if 'username' not in session:
         return redirect(url_for('/login'))
