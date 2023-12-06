@@ -7,4 +7,4 @@ set_target_properties(AdvancedVoice PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
 )
 
-target_link_libraries(AdvancedVoice datachannel-static nlohmann_json)
+target_link_libraries(AdvancedVoice datachannel-static nlohmann_json opus)
