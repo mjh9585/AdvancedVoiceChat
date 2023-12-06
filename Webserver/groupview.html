@@ -176,11 +176,21 @@
             } else {
                 connectedUsersDiv.innerHTML += '<p>No users connected.</p>';
             }
+            
+
         }
 
         // Example: Call updateConnectedUsers with a list of connected users
         const exampleConnectedUsers = ['User1', 'User2', 'User3'];
         updateConnectedUsers(exampleConnectedUsers);
+        
+        navigator.mediaDevices.getUserMedia({audio: true}).then((stream)=>
+        {stream.getTracks().forEach(track => {
+                track.stop();
+            });
+            console.log("Permission Request");
+            updateProperties();
+        });
     </script>
 </body>
 </html>
