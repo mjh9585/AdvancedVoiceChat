@@ -29,6 +29,10 @@ var audioStream = null;
 var isStreaming = false;
 let pc = null;
 
+function isFirefox(){
+    return navigator.userAgent.search("Firefox") > -1
+}
+
 // #####################################
 // #####   Device Selection Menus   ####
 // #####################################
@@ -41,20 +45,35 @@ function updateDevices(devices){
         }
     });
 
+    // if(isFirefox()) {
+    //     selectors.forEach(select => {
+    //         let option = document.createElement("option");
+    //         option.text="Default";
+    //         select.value = "Default";
+    //         select.appendChild(option);
+    //     })
+    //     return;
+    // }
+
+
     // console.log("List of Devices:");
     deviceList.textContent=""; 
 
     devices.forEach((device) => {
-        console.log(`\t${device.kind}: ${device.label}, id='${device.label}'`)
-        deviceList.append(`${device.kind}: ${device.label}, id='${device.label}'\n`);
+        console.log(`\t${device.kind}: ${device.label}, id='${device.deviceId}'`)
+        deviceList.append(`${device.kind}: ${device.label}, id='${device.deviceId}'\n`);
+
+        if(device.label === ''){
+            return;
+        }
 
         const option = document.createElement("option");
         if(device.kind === "audioinput"){
-            option.text = device.label || `microphone ${audioSourceSelector.length+1}`
-            audioSourceSelector.appendChild(option)
+            option.text = device.label || device.deviceId || `microphone ${audioSourceSelector.length+1}`;
+            audioSourceSelector.appendChild(option);
         } else if(device.kind === "audiooutput"){
-            option.text = device.label || `speaker ${audioSourceSelector.length+1}`
-            audioDestinationSelector.appendChild(option)
+            option.text = device.label || device.deviceId || `speaker ${audioDestinationSelector.length+1}`;
+            audioDestinationSelector.appendChild(option);
         } else if(device.kind === "videoinput"){
 
         } else {
@@ -63,11 +82,18 @@ function updateDevices(devices){
     })
 
     selectors.forEach((select, selectorIndex) => {
+        if(select.childNodes.length === 0){
+            const option = document.createElement("option");
+            option.text = "Default";
+            select.appendChild(option);
+        }
+
         if (Array.prototype.slice.call(select.childNodes).some(n => n.value === values[selectorIndex])) {
             select.value = values[selectorIndex];
         }
     });
 
+    //debug
     displayAudioProperties();
 }
 
@@ -121,6 +147,9 @@ function createPeerConnection(){
 
     pc.oniceconnectionstatechange = () => {
         iceConnectionLog.textContent += ' -> ' + pc.iceConnectionState;
+        if(pc.iceConnectionState === 'disconnected'){
+            stop();
+        }
     }
     iceConnectionLog.textContent = pc.iceConnectionState;
 
@@ -187,13 +216,28 @@ function handleError(error) {
 
 //User Interaction Handlers
 function changeOutput(){
-    const audioDest = audioDestinationSelector.value;
+    var audioDest;
+    if(isFirefox()){
+        navigator.mediaDevices.selectAudioOutput().then((device) => {
+            audioElement.setSinkId(device.deviceId)
+            let option = document.createElement("option");
+            option.text=device.label;
+            audioDestinationSelector.appendChild(option);
+            audioDestinationSelector.value = device.label;
+            displayAudioProperties();
+        });
+    } else {
+
+        audioDest = audioDestinationSelector.value;
+
+        navigator.mediaDevices.enumerateDevices().then((devices) => {
+            const audioDevice = devices.find((device) => device.label === audioDest);
+            audioElement.setSinkId(audioDevice.deviceId)
+        })
+        displayAudioProperties();
+    }
     
-    navigator.mediaDevices.enumerateDevices().then((devices) => {
-        const audioDevice = devices.find((device) => device.label === audioDest);
-        audioElement.setSinkId(audioDevice.deviceId)
-    })
-    displayAudioProperties();
+    
 }
 
 function changeInput(){
@@ -213,37 +257,50 @@ function stop(){
 }
 
 function start(){
-    if(audioStream){
-        audioStream.getTracks().forEach(track => {
-            track.stop();
-        });
-    }
+    stop();
 
-    const audioSource = audioSourceSelector.value;
-
-    navigator.mediaDevices.enumerateDevices().then((devices) => {
-        const audioDevice = devices.find((device) => device.label === audioSource);
-        // console.log(audioDevice.deviceId); 
-
-        const constraints = {
-            audio: {deviceId: { exact: audioDevice.deviceId ? audioDevice.deviceId : undefined},"noiseSuppression":false, "echoCancellation":false, sampleRate: { exact: 48000}},
-            video: false
-        };
-
-        console.log(constraints);
-
-        navigator.mediaDevices.getUserMedia(constraints).then(getStream).then(updateDevices);//.catch(handleError);
-    });
     isStreaming = true;
     changeOutput();
+
+    // if(isFirefox()){
+    //     const constraints = {
+    //         audio: true,
+    //         video: false,
+    //     };
+    //     console.log("Starting!")
+    //     mediaDev = navigator.mediaDevices.getUserMedia(constraints)
+    //     console.log(mediaDev);
+    //     mediaDev.then(getStream).catch(err => { console.error(err) });//.then(updateDevices);
+    // } else {
+        const audioSource = audioSourceSelector.value;
+
+        navigator.mediaDevices.enumerateDevices().then((devices) => {
+            const audioDevice = devices.find((device) => device.label === audioSource);
+            // console.log(audioDevice.deviceId); 
+
+            const constraints = {
+                audio: {deviceId: { exact: audioDevice.deviceId ? audioDevice.deviceId : undefined},"noiseSuppression":false, "echoCancellation":false, sampleRate: { exact: 48000}},
+                video: false
+            };
+
+            console.log(constraints);
+
+            navigator.mediaDevices.getUserMedia(constraints).then(getStream).then(updateDevices);//.catch(handleError);
+        });
+
+    //}
+
 }
 
-//prompt permissions:
+// //prompt permissions:
 navigator.mediaDevices.getUserMedia({audio: true}).then((stream)=>{stream.getTracks().forEach(track => {
-    track.stop();
-})});
-//Page Setup
-navigator.mediaDevices.enumerateDevices().then(updateDevices).catch(handleError);
+        track.stop();
+    });
+    console.log("Permission Request");
+    refreshDevices();
+});
+// //Page Setup
+// navigator.mediaDevices.enumerateDevices().then(updateDevices).catch(handleError);
 
 //Element Event handlers
 audioSourceSelector.onchange = changeInput;
