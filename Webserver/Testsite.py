@@ -6,7 +6,7 @@ app.config.from_mapping({"BASE_DIR":os.path.abspath(os.path.dirname(__file__)), 
 
 @app.after_request
 def addPermissions(response):
-    response.headers["Feature-Policy"]="speaker-selection=(self)" #"speaker-selection=(self)"#, "microphone=(self)"]
+    response.headers["Permissions-Policy"]="speaker-selection=(self), microphone=(self)"
     return response
 
 @app.route("/")
@@ -15,4 +15,4 @@ def hello_world():
     # resp.headers["Permissions-Policy"] = 
     return resp
 
-app.run()
+app.run(host='0.0.0.0')#, ssl_context=('cert.pem', 'key.pem'))
