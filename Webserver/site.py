@@ -1,5 +1,6 @@
-from flask import Flask, render_template, request, session, redirect, url_for
+from flask import Flask, render_template, request, session, redirect, url_for, json
 from flask_sock import Sock
+import json
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = '61@sdL.Z=]tXnEZ'
@@ -8,6 +9,7 @@ sock = Sock(app)
 
 # In-memory storage for user sessions
 users = {}
+#usernames_to_ws = {}  # Map of usernames to WebSocket connections
 
 
 @app.route('/')
@@ -29,21 +31,30 @@ def login():
     return render_template('login.html')
 
 
-@sock.route('/ws/<user_id>')
-def echo(ws, user_id):
-    while True:
-        data = ws.receive()
-        while True:
-            data = ws.receive()
-            ws.send(data)
-        '''Started work on having the received message actually forwarded to the requested client but could not figure
-            out how to correctly do so. get_ws_by_room() does not exist (thanks ChatGPT) but I can't find the substitute
-            for the "emit" function in Flask-SocketIO for the simple Flask-Sock library we are using.
-        # Iterate through connected clients and send the message individually
-        for client_id, client_username in users.items():
-            if client_id != user_id:  # Skip sending the message to the sender
-                connected_client_ws = sock.get_ws_by_room(str(client_id))
-                connected_client_ws.send(data)'''
+@sock.route('/ws')
+def handle_ws(ws):
+    if 'username' not in session or session['username'] == 'server':
+        return
+
+        # Add WebSocket connection to the map
+    users[session['username']] = ws
+    while not ws.closed:
+        message = ws.receive()
+        if message:
+            try:
+                data = json.loads(message)
+                receiver_id = data.get('id')
+                payload = data.get('data')
+
+                if receiver_id in users:
+                    # Forward the message to the specified user
+                    receiver_ws = users[receiver_id]
+                    sender_username = session['username']
+                    sender_message = {'id': sender_username, 'data': payload}
+                    receiver_ws.send(json.dumps(sender_message))
+            except json.JSONDecodeError:
+                # Handle invalid JSON
+                pass
 
 
 if __name__ == '__main__':
