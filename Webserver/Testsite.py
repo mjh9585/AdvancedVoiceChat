@@ -15,4 +15,4 @@ def hello_world():
     # resp.headers["Permissions-Policy"] = 
     return resp
 
-app.run(host='0.0.0.0')#, ssl_context=('cert.pem', 'key.pem'))
+app.run(host='0.0.0.0', ssl_context=('cert.pem', 'key.pem'))
