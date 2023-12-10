@@ -3,6 +3,7 @@
 #include <memory>
 #include <mutex>
 #include <optional>
+#include <cstring>
 
 
 template <class T>
@@ -77,6 +78,80 @@ public:
         head_ = (head_ + 1) % max_size_;
 
         full_ = head_ == tail_;
+    }
+
+    /** 
+     * @brief  Adds array of data to the ring buffer.
+     * @param data is the array containing the data to be added
+     * @param length is the length of the array
+     * Buffer must be twice the length of the data to prevent double wrap arounds
+     */
+    int putMany(T data[], int length)
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        int slots_to_end = max_size_ - head_; //buffer capacity minus current number of values
+        int slots_to_write = length >= slots_to_end ? slots_to_end : length; 
+        
+        if(length > max_size_) return -1;
+        memcpy(&buf_[head_], data, sizeof(data[0])*(slots_to_write)); //Fill slots to end of array with data.
+        if ((tail_ >= head_) && (tail_ < (head_ + slots_to_write)))
+        {
+            tail_ = (head_ + slots_to_write) % max_size_;
+            full_ = true;
+        }
+        
+        head_ = (head_ + slots_to_write) % max_size_;
+
+        if ((length - slots_to_end) > 0)
+        {
+            slots_to_write = length - slots_to_end;
+            memcpy(&buf_[head_], &data[slots_to_end], sizeof(data[0])*(slots_to_write));
+            if ((tail_ >= head_) && (tail_ < (head_ + slots_to_write)))
+            {
+                tail_ = (head_ + slots_to_write) % max_size_;
+                full_ = true;
+            }
+            
+            head_ = (head_ + slots_to_write) % max_size_;
+        }
+        return 0;
+    }
+
+    void printBuff() {
+        printf("Head: %ld, Tail: %ld\r\n[", head_, tail_);
+        for(int i = 0; i < max_size_; i++){
+            printf("%d ", buf_[i]);
+        }
+        printf("]\r\n");
+    }
+
+    int getMany(T *data, int length)
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        if(empty())
+        {
+            return 0;
+        }
+        int count = 0;
+        int slots_to_end = tail_ >= head_ ? max_size_ - tail_ : size(); //buffer capacity minus current number of values
+        int slots_to_read = length >= slots_to_end ? slots_to_end : length; 
+        memcpy(data,&buf_[tail_],sizeof(T) * slots_to_read);
+        tail_ = (tail_ + slots_to_read) % max_size_;
+        count = slots_to_read;
+        full_ = false;
+
+        if (tail_ >= head_)
+        {
+            return count;
+        }
+
+        slots_to_end = tail_ >= head_ ? max_size_ - tail_ : size();
+        slots_to_read = (length - count) >= slots_to_end ? slots_to_end : length - count;
+        memcpy(&data[count],&buf_[tail_],sizeof(T) * slots_to_read);
+        tail_ = (tail_ + slots_to_read) % max_size_;
+        count += slots_to_read;
+        full_ = false;
+        return count;
     }
 
     std::optional<T> get()

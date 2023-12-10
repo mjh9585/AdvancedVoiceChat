@@ -68,4 +68,25 @@ int main()
     std::cout << "Channel 1 empty " << channel1.empty() << "; Channel 2 empty " << channel2.empty() << "\r\n";
     std::cout << "Channel 1 size " << channel1.size() << "; Channel 2 size " << channel2.size() << "\r\n";
     std::cout << "Channel 1 full " << channel1.full() << "; Channel 2 full " << channel2.full() << "\r\n";
+
+    RingBuffer<uint8_t> channel3(5);
+    uint8_t data_in[3];
+    uint8_t data_out[5];
+    for (int i = 0; i < 3; i++)
+    {
+        data_in[0] = i * 3;
+        data_in[1] = i * 3 + 1;
+        data_in[2] = i * 3 + 2;
+        channel3.putMany(data_in, 3);
+        channel3.printBuff();
+    }
+
+    printf("Got %d\r\n", channel3.getMany(data_out, 5));
+
+    for (int i = 0; i < 5; i++)
+    {
+        printf("Data_out [%d] = %d\r\n", i, data_out[i]);
+    }
+    
+    
 }
