@@ -8,3 +8,10 @@ set_target_properties(AdvancedVoice PROPERTIES
 )
 
 target_link_libraries(AdvancedVoice datachannel-static nlohmann_json)
+
+add_executable(RingBufferTest BufferTesting.cpp RingBuffer.hpp)
+set_target_properties(RingBufferTest PROPERTIES 
+    CXX_STANDARD 17
+    OUTPUT_NAME RingBufferTest
+    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
+)

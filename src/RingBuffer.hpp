@@ -14,8 +14,9 @@ private:
     std::unique_ptr<T[]> buf_;
     size_t head_ = 0;
     size_t tail_ = 0;
+    size_t count_ = 0;
     const size_t max_size_;
-    bool full_ = false;
+    // bool full_ = false;
 
 public:
     explicit RingBuffer(size_t size):max_size_(size),buf_(std::unique_ptr<T[]>(new T[size]))
@@ -25,19 +26,19 @@ public:
     {
         std::lock_guard<std::mutex> lock(mutex_);
         head_ = tail_;
-        full_ = false;
+        count_ = 0;
     }
 
     bool empty() const
     {
         //if head and tail are equal, we are empty
-        return (!full_ && (head_ == tail_));
+        return (count_ == 0);
     }
 
     bool full() const
     {
         //if head and tail are equal, we are empty
-        return full_;
+        return (count_ >= max_size_);
     }
 
     size_t capacity() const
@@ -47,21 +48,21 @@ public:
 
     size_t size() const
     {
-        size_t size = max_size_;
+        // size_t size = max_size_;
 
-        if(!full_)
-        {
-            if(head_ >= tail_)
-            {
-                size = head_ - tail_;
-            }
-            else
-            {
-                size = max_size_ + head_ - tail_;
-            }
-        }
+        // if(!full_)
+        // {
+        //     if(head_ >= tail_)
+        //     {
+        //         size = head_ - tail_;
+        //     }
+        //     else
+        //     {
+        //         size = max_size_ + head_ - tail_;
+        //     }
+        // }
 
-        return size;
+        return count_;
     }
 
     void put(T item)
@@ -70,14 +71,15 @@ public:
 
         buf_[head_] = item;
 
-        if(full_)
+        if(full())
         {
             tail_ = (tail_ + 1) % max_size_;
+        }else{
+            count_++;
         }
 
         head_ = (head_ + 1) % max_size_;
-
-        full_ = head_ == tail_;
+        // full_ = head_ == tail_;
     }
 
     /** 
@@ -94,22 +96,26 @@ public:
         
         if(length > max_size_) return -1;
         memcpy(&buf_[head_], data, sizeof(data[0])*(slots_to_write)); //Fill slots to end of array with data.
-        if ((tail_ >= head_) && (tail_ < (head_ + slots_to_write)))
-        {
+        count_ += slots_to_write;
+        if(count_ > max_size_){
+        // if ((tail_ >= head_) && (tail_ < (head_ + slots_to_write)))
+        // {
             tail_ = (head_ + slots_to_write) % max_size_;
-            full_ = true;
+            count_ = max_size_;
         }
         
         head_ = (head_ + slots_to_write) % max_size_;
-
+        
         if ((length - slots_to_end) > 0)
         {
             slots_to_write = length - slots_to_end;
             memcpy(&buf_[head_], &data[slots_to_end], sizeof(data[0])*(slots_to_write));
-            if ((tail_ >= head_) && (tail_ < (head_ + slots_to_write)))
-            {
+            count_ += slots_to_write;
+            if(count_ > max_size_){
+            // if ((tail_ >= head_) && (tail_ < (head_ + slots_to_write)))
+            // {
                 tail_ = (head_ + slots_to_write) % max_size_;
-                full_ = true;
+                count_ = max_size_;
             }
             
             head_ = (head_ + slots_to_write) % max_size_;
@@ -132,26 +138,26 @@ public:
         {
             return 0;
         }
-        int count = 0;
+        int itemsRetrieved = 0;
         int slots_to_end = tail_ >= head_ ? max_size_ - tail_ : size(); //buffer capacity minus current number of values
         int slots_to_read = length >= slots_to_end ? slots_to_end : length; 
         memcpy(data,&buf_[tail_],sizeof(T) * slots_to_read);
         tail_ = (tail_ + slots_to_read) % max_size_;
-        count = slots_to_read;
-        full_ = false;
+        itemsRetrieved = slots_to_read;
+        count_ -= slots_to_read;
 
         if (tail_ >= head_)
         {
-            return count;
+            return itemsRetrieved;
         }
 
         slots_to_end = tail_ >= head_ ? max_size_ - tail_ : size();
-        slots_to_read = (length - count) >= slots_to_end ? slots_to_end : length - count;
-        memcpy(&data[count],&buf_[tail_],sizeof(T) * slots_to_read);
+        slots_to_read = (length - itemsRetrieved) >= slots_to_end ? slots_to_end : length - itemsRetrieved;
+        memcpy(&data[itemsRetrieved],&buf_[tail_],sizeof(T) * slots_to_read);
         tail_ = (tail_ + slots_to_read) % max_size_;
-        count += slots_to_read;
-        full_ = false;
-        return count;
+        itemsRetrieved += slots_to_read;
+        count_ -= slots_to_read;
+        return itemsRetrieved;
     }
 
     std::optional<T> get()
@@ -165,7 +171,7 @@ public:
 
         //Read data and advance the tail (we now have a free space)
         auto val = buf_[tail_];
-        full_ = false;
+        count_--;
         tail_ = (tail_ + 1) % max_size_;
 
         return val;
