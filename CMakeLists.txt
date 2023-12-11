@@ -8,6 +8,7 @@ project(AdvancedVoiceChat VERSION 0.1)
 
 # Dependencies
 add_subdirectory(libs/libdatachannel EXCLUDE_FROM_ALL)
+add_subdirectory(libs/opus EXCLUDE_FROM_ALL)
 
 # Project
 add_subdirectory(src)
