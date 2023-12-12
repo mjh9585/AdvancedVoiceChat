@@ -1,3 +1,6 @@
+#ifndef RING_BUFFER_HPP
+#define RING_BUFFER_HPP
+
 #include <stdint.h>
 #include <stdlib.h>
 #include <memory>
@@ -177,3 +180,5 @@ public:
         return val;
     }
 };
+
+#endif //RING_BUFFER_HPP

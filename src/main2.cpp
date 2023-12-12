@@ -30,16 +30,35 @@ using json = nlohmann::json;
 // all connected clients
 unordered_map<string, shared_ptr<Client>> clients{};
 
+struct ConnectedPair {
+	std::weak_ptr<Client> client1;
+	std::weak_ptr<Client> client2;
+	bool ready = false;
+};
+
+ConnectedPair connectionPair;
+
 void handleRequest(string id, rtc::Configuration config, shared_ptr<rtc::WebSocket> ws) {
 
 	if (clients.find(id) == clients.end()) { //not found
 		// cout << "New Client!" <<endl;
-		auto client = new Client(id, ws);
+		auto client = make_shared<Client>(id, ws);
 		client->createPeerConnection(config);
 		clients.emplace(id, client);
 		client->onDisconnect([](Client * c){
 			clients.erase(c->getID());
 		});
+
+		// client->onConnect([client](Client * c){
+		// 	cout << "Client " << c->getID() << " connected" << endl;
+		// 	if(connectionPair.client1.expired()){
+		// 		cout << "Set as Client 1" << endl;
+		// 		connectionPair.client1 = client;
+		// 	}else if(connectionPair.client2.expired()){
+		// 		cout << "Set as Client 2" << endl;
+		// 		connectionPair.client2 = client;
+		// 	}
+		// });
 	}
 }
 
@@ -106,7 +125,11 @@ int main() {
 
 		//Configuration settings
 		rtc::Configuration webRTCConfig;
-		webRTCConfig.disableAutoNegotiation = true;
+		string stunServer = "stun:stun.l.google.com:19302";
+		cout << "STUN server is " << stunServer << endl;
+		webRTCConfig.iceServers.emplace_back(stunServer);
+		webRTCConfig.portRangeBegin = 65000;
+		// webRTCConfig.disableAutoNegotiation = true;
 
 		rtc::WebSocket::Configuration webSocketConfig;
 		webSocketConfig.disableTlsVerification = true; //need for the server to accept the self signed certificate 
@@ -138,10 +161,36 @@ int main() {
 		}
 		cout << endl;
 
+		while (true)
+		{	
+			// if(!connectionPair.client1.expired() && !connectionPair.client2.expired()){
+			// 	if(!connectionPair.ready){
 
-		std::cout << "Press any key to exit." << std::endl;
-		char dummy;
-		std::cin >> dummy;
+			// 		cout << "Connecting Clients together" << endl;
+			// 		connectionPair.ready = true;
+
+			// 		shared_ptr<Client> c1 = connectionPair.client1.lock();
+			// 		shared_ptr<Client> c2 = connectionPair.client2.lock();
+
+			// 		shared_ptr<rtc::Track> c1Track = c1->getSendTrack();
+			// 		shared_ptr<rtc::Track> c2Track = c2->getSendTrack();
+
+			// 		c1->setSendTrack(c2Track);
+			// 		c2->setSendTrack(c1Track);
+
+			// 	}
+			// }else{
+			// 	connectionPair.ready = false; 
+			// }
+
+			this_thread::sleep_for(100ms);
+		}
+		
+
+
+		// std::cout << "Press any key to exit." << std::endl;
+		// char dummy;
+		// std::cin >> dummy;
 
 		return 0;
 
