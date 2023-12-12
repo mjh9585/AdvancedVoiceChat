@@ -10,11 +10,13 @@
 
 using json = nlohmann::json;
 
-#define FRAME_SIZE 960
+
 #define SAMPLE_RATE 48000
 #define CHANNELS 2
 #define APPLICATION OPUS_APPLICATION_VOIP
-#define BITRATE 64000
+
+#define FRAME_SIZE 960
+#define BITRATE 96000
 #define MAX_FRAME_SIZE 6*960
 #define MAX_PACKET_SIZE (3*1276)
 
@@ -115,12 +117,23 @@ public:
         }, nullptr);
 		
 		//send channel
-		rtc::Description::Audio sendMedia("send", rtc::Description::Direction::SendOnly);
+		rtc::Description::Audio sendMedia("audio-send", rtc::Description::Direction::SendOnly);
 		sendMedia.addOpusCodec(111); 
-		sendMedia.setBitrate(100); // Request 100kbps
-		sendMedia.addSSRC(targetSSRC, "audio-send");
-
+		// sendMedia.setBitrate(100); // Request 100kbps
+		sendMedia.addSSRC(targetSSRC, "audio-send", "stream1", "audio-send");
 		this->sendTrack = pc->addTrack(sendMedia);
+        // create RTP configuration
+        auto rtpConfig = std::make_shared<rtc::RtpPacketizationConfig>(targetSSRC, "audio-send", 111, rtc::OpusRtpPacketizer::DefaultClockRate);
+        // create packetizer
+        auto packetizer = std::make_shared<rtc::OpusRtpPacketizer>(rtpConfig);
+        // add RTCP SR handler
+        auto srReporter = std::make_shared<rtc::RtcpSrReporter>(rtpConfig);
+        packetizer->addToChain(srReporter);
+        // add RTCP NACK handler
+        auto nackResponder = std::make_shared<rtc::RtcpNackResponder>();
+        packetizer->addToChain(nackResponder);
+        // set handler
+        this->sendTrack->setMediaHandler(packetizer);
 
         pc->setLocalDescription();
     }
@@ -162,6 +175,8 @@ private:
 
     AudioBuffer reciveBuffer = AudioBuffer(48000);
     AudioBuffer transmitBuffer = AudioBuffer(48000);
+
+    rtc::binary sample = {};
     
     void handleIncomingAudio(rtc::binary message){
         opus_int16 raw[FRAME_SIZE*CHANNELS];
@@ -170,13 +185,18 @@ private:
         int frameSize;
 
         auto rtp = reinterpret_cast<rtc::RtpHeader*>(message.data());
-		rtp->setSsrc(targetSSRC);
-        if(sendTrack != nullptr && sendTrack->isOpen()){
-            sendTrack->send(message);
-        }
-        frameSize = message.size() - rtp->getSize();
 
-        // frameSize = opus_decode(decoder, (const unsigned char*)rtp->getBody(), frameSize, raw, MAX_FRAME_SIZE, 0);
+        rtp->log();
+		
+        frameSize = message.size() - rtp->getSize();
+        frameSize = opus_decode(decoder, (const unsigned char*)rtp->getBody(), frameSize, raw, MAX_FRAME_SIZE, 0);
+
+        // rtp->setSsrc(targetSSRC);
+        if(sendTrack != nullptr && sendTrack->isOpen()){
+            auto *b = reinterpret_cast<const std::byte*>(rtp->getBody());
+            sample.assign(b, b + (message.size() - rtp->getSize()));
+            sendTrack->send(sample);
+        }
         // if (frameSize<0)
         // {
         //     fprintf(stderr, "decoder failed: %s\n", opus_strerror(frameSize));
