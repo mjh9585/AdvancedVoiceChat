@@ -272,6 +272,10 @@ function createConnection(userID){
 function createPeerConnection(ws) {
     const config = {
         bundlePolicy: "max-bundle",
+        iceServers : [ {
+            urls : 'stun:stun.l.google.com:19302', // change to your STUN server
+          } ],
+
     }
     let pc = new RTCPeerConnection(config);
     pc.oniceconnectionstatechange = () => {

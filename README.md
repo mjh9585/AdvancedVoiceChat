@@ -13,6 +13,8 @@ To setup the project run :
 python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
+cd Webserver
+openssl req -x509 -newkey rsa:4096 -nodes -out cert.pem -keyout key.pem -days 365
 ```
 
 ### Setting up the Libraries
