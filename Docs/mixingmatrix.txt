@@ -1,0 +1,24 @@
+Mixing Matrix: Class
+<Fixed Size>
+
+Members:
+    Master Coefficients 2D array
+    Vector to shove buffers into (?2-D?)
+
+Methods:
+    update - does calculations
+        iterate through columns
+    add channel (user)
+    remove channel (user)
+    <strech goal> modify_coefficent(?row?, ?column?)
+    scale_vector(scalar)
+
+
+Notes:
+    User:
+        > Has 2 buffers
+            - Receive
+                -get_recieve_buffer()
+            - Transmit
+                -get_transfer_buffer()
+    Set up primitive buffer of fixed sample size

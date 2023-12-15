@@ -107,4 +107,31 @@ int main()
     std::cout << "Channel 3 size " << channel3.size() << std::endl;
     std::cout << "Channel 3 full " << channel3.full() << std::endl;
     
+    std::cout << "##############################" << std::endl;
+    channel3.reset();
+    //add test for over pushing
+    uint8_t more_in[6];
+    uint8_t more_out[7];
+    for (int i = 0; i < 1; i++)
+    {
+        more_in[0] = i * 3;
+        more_in[1] = i * 3 + 1;
+        more_in[2] = i * 3 + 2;
+        more_in[3] = i * 3 + 3;
+        more_in[4] = i * 3 + 4;
+        more_in[5] = i * 3 + 5;
+        channel3.putMany(more_in, 6);
+        channel3.printBuff();
+    }
+    std::cout << "Channel 3 empty " << channel3.empty() << std::endl;
+    std::cout << "Channel 3 size " << channel3.size() << std::endl;
+    std::cout << "Channel 3 full " << channel3.full() << std::endl;
+
+    //add test for over pulling
+    printf("Got %d\r\n", channel3.getMany(more_out, 7));
+
+    for (int i = 0; i < 7; i++)
+    {
+        printf("More_out [%d] = %d\r\n", i, data_out[i]);
+    }
 }
