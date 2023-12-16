@@ -70,9 +70,11 @@ function updateDevices(devices){
         const option = document.createElement("option");
         if(device.kind === "audioinput"){
             option.text = device.label || device.deviceId || `microphone ${audioSourceSelector.length+1}`;
+            option.value = device.deviceId;
             audioSourceSelector.appendChild(option);
         } else if(device.kind === "audiooutput"){
             option.text = device.label || device.deviceId || `speaker ${audioDestinationSelector.length+1}`;
+            option.value = device.deviceId;
             audioDestinationSelector.appendChild(option);
         } else if(device.kind === "videoinput"){
 
@@ -221,9 +223,10 @@ function changeOutput(){
         navigator.mediaDevices.selectAudioOutput().then((device) => {
             audioElement.setSinkId(device.deviceId)
             let option = document.createElement("option");
-            option.text=device.label;
+            option.text = device.label;
+            option.value = device.Id;
             audioDestinationSelector.appendChild(option);
-            audioDestinationSelector.value = device.label;
+            audioDestinationSelector.text = device.label;
             displayAudioProperties();
         });
     } else {
@@ -275,17 +278,22 @@ function start(){
         const audioSource = audioSourceSelector.value;
 
         navigator.mediaDevices.enumerateDevices().then((devices) => {
-            const audioDevice = devices.find((device) => device.label === audioSource);
-            // console.log(audioDevice.deviceId); 
-
-            const constraints = {
-                audio: {deviceId: { exact: audioDevice.deviceId ? audioDevice.deviceId : undefined},"noiseSuppression":false, "echoCancellation":false, sampleRate: { exact: 48000}},
-                video: false
+            const audioDevice = devices.find((device) => device.deviceId === audioSource);
+            console.log(audioDevice); 
+            constraints = {
+                audio: true,
+                video: false,
             };
+            if(audioDevice != undefined){
+                constraints = {
+                    audio: {deviceId: { exact: audioDevice.deviceId ? audioDevice.deviceId : undefined},"noiseSuppression":false, "echoCancellation":false, sampleRate: { exact: 48000}},
+                    video: false
+                };
+            }
 
             console.log(constraints);
 
-            navigator.mediaDevices.getUserMedia(constraints).then(getStream).then(updateDevices);//.catch(handleError);
+            navigator.mediaDevices.getUserMedia(constraints).then(getStream).then(updateDevices).catch(err => { console.error(err) });
         });
 
     //}
@@ -293,11 +301,13 @@ function start(){
 }
 
 // //prompt permissions:
-navigator.mediaDevices.getUserMedia({audio: true}).then((stream)=>{stream.getTracks().forEach(track => {
+navigator.mediaDevices.getUserMedia({audio: true}).then((stream)=>{
+    navigator.mediaDevices.enumerateDevices().then(updateDevices);
+    stream.getTracks().forEach(track => {
         track.stop();
     });
     console.log("Permission Request");
-    refreshDevices();
+    // refreshDevices();
 });
 // //Page Setup
 // navigator.mediaDevices.enumerateDevices().then(updateDevices).catch(handleError);

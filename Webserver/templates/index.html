@@ -53,11 +53,16 @@
             margin-top: 20px;
         }
     </style>
+    
 </head>
 <body>
     <h1>Group Voice Chat & Settings</h1>
 
     <form id="settingsForm">
+        <div>Signed in as: <div style="display: inline;" id="username">{{ username }}</div> 
+            <div style="display: none;" id="userid">{{ user_id }}</div>
+        </div> 
+
         <label for="audioInput">Audio Input Source:</label>
         <select id="audioInput" name="audioInput" required></select>
 
@@ -65,18 +70,36 @@
         <select id="audioOutput" name="audioOutput" required></select>
 
         <label for="volume">Volume:</label>
-        <input type="range" id="volume" name="volume" min="0" max="100" value="50">
+        <input type="range" disabled id="volume" name="volume" min="0" max="100" value="50">
 
-        <button type="button" onclick="startConnection()">Start</button>
-        <button type="button" onclick="stopConnection()">Stop</button>
-        <button type="button" onclick="updateProperties()">Refresh</button>
+        <button type="button" id="startStream" onclick="startConnection()">Start</button>
+        <button type="button" id="stopStream" onclick="stopConnection()">Stop</button>
+        <button type="button" id="refreshProperties" onclick="updateProperties()">Refresh</button>
     </form>
 
     <div id="connectedUsers">
         <!-- Connected users will be displayed here -->
     </div>
 
-    <script>
+    <div id="media" style="display: none">
+        <audio id="audio" autoplay></audio>
+    </div>
+
+    <script src="static/main.js"></script>
+
+    <!-- <script>
+        const audioSourceSelector = document.getElementById('audioInput');
+        const audioDestinationSelector = document.getElementById('audioOutput');
+        const selectors = [audioSourceSelector, audioDestinationSelector];
+        const audioElement = document.querySelector("audio");
+
+        const startButtonElement = document.querySelector("#startStream");
+        const stopButtonElement = document.querySelector("#stopStream");
+        const refreshButtonElement = document.querySelector("#refreshProperties");
+
+        const userName = document.querySelector("#username").textContent;
+        const userID = document.querySelector("#userid").textContent;
+
         // Placeholder for connected users
         let connectedUsers = [];
 
@@ -92,16 +115,31 @@
 
         // Function to update audio settings based on form inputs
         function updateAudioSettings() {
-            audioSettings.audioInput = document.getElementById('audioInput').value;
-            audioSettings.audioOutput = document.getElementById('audioOutput').value;
+            audioSettings.audioInput = audioSourceSelector.value;
+            audioSettings.audioOutput = audioDestinationSelector.value;
             audioSettings.volume = document.getElementById('volume').value;
         }
 
         // Function to start the connection
         function startConnection() {
             updateAudioSettings();
+            console.log(`Connecting as ${userName} with id ${userID}`);
+            createConnection(userID).then((ws)=>{
+                console.log("Websocket connected, requesting voice!");
+                startButtonElement.disabled = true;
+                ws.onclose = () =>{
+                    console.warn('WebSocket disconnected');
+                    startButtonElement.disabled = false;
+                }
+                requestVoice(ws, userID);
+
+            }).catch((err) => {
+                console.error(err);
+                startButtonElement.disabled = false;
+            });
+
             // Start the connection here
-            alert('Connection started\n');
+            // alert('Connection started\n');
         }
 
         // Function to stop the connection
@@ -114,50 +152,50 @@
         function updateProperties() {
             updateAudioSettings();
 
+            const audioInputSelect = document.getElementById('audioInput');
+            const audioOutputSelect = document.getElementById('audioOutput');
+            const selectors = [audioSourceSelector, audioDestinationSelector]
+
             // Fetch and populate audio input devices
             navigator.mediaDevices.enumerateDevices()
                 .then(devices => {
-                    const audioInputSelect = document.getElementById('audioInput');
-                    audioInputSelect.innerHTML = ''; // Clear existing options
+                    audioSourceSelector.innerHTML = ''; // Clear existing options
+                    audioDestinationSelector.innerHTML = ''; // Clear existing options
                     devices.forEach(device => {
                         if (device.kind === 'audioinput') {
                             const option = document.createElement('option');
                             option.value = device.deviceId;
-                            option.text = device.label || 'Microphone ' + (audioInputSelect.options.length + 1);
-                            audioInputSelect.add(option);
+                            option.text = device.label || 'Microphone ' + (audioSourceSelector.options.length + 1);
+                            audioSourceSelector.add(option);
                         }
-                    });
-                    // Set the selected value based on audioSettings
-                    audioInputSelect.value = audioSettings.audioInput;
-                })
-                .catch(error => {
-                    console.error('Error fetching audio input devices:', error);
-                });
-
-            // Fetch and populate audio output devices
-            navigator.mediaDevices.enumerateDevices()
-                .then(devices => {
-                    const audioOutputSelect = document.getElementById('audioOutput');
-                    audioOutputSelect.innerHTML = ''; // Clear existing options
-                    devices.forEach(device => {
                         if (device.kind === 'audiooutput') {
                             const option = document.createElement('option');
                             option.value = device.deviceId;
-                            option.text = device.label || 'Speaker ' + (audioOutputSelect.options.length + 1);
-                            audioOutputSelect.add(option);
+                            option.text = device.label || 'Speaker ' + (audioDestinationSelector.options.length + 1);
+                            audioDestinationSelector.add(option);
                         }
                     });
+
+                    if(!audioSettings.audioInput){
+                        audioSettings.audioInput = audioSourceSelector.childNodes[0].value
+                    }
+
+                    if(!audioSettings.audioOutput){
+                        audioSettings.audioOutput = audioDestinationSelector.childNodes[0].value
+                    }
+
                     // Set the selected value based on audioSettings
-                    audioOutputSelect.value = audioSettings.audioOutput;
+                    audioSourceSelector.value = audioSettings.audioInput;
+                    audioDestinationSelector.value = audioSettings.audioOutput;
                 })
                 .catch(error => {
-                    console.error('Error fetching audio output devices:', error);
+                    console.error('Error fetching audio devices:', error);
                 });
 
             // Display updated settings
-            alert('Properties updated!\nAudio Input: ' + audioSettings.audioInput +
-                '\nAudio Output: ' + audioSettings.audioOutput +
-                '\nVolume: ' + audioSettings.volume);
+            console.log(`Properties updated!\nAudio Input: ${audioSettings.audioInput}
+                \nAudio Output: ${audioSettings.audioOutput}
+                \nVolume: ${audioSettings.volume}`);
         }
 
         function updateConnectedUsers(users) {
@@ -176,21 +214,22 @@
             } else {
                 connectedUsersDiv.innerHTML += '<p>No users connected.</p>';
             }
-            
-
         }
 
         // Example: Call updateConnectedUsers with a list of connected users
         const exampleConnectedUsers = ['User1', 'User2', 'User3'];
         updateConnectedUsers(exampleConnectedUsers);
         
-        navigator.mediaDevices.getUserMedia({audio: true}).then((stream)=>
-        {stream.getTracks().forEach(track => {
-                track.stop();
+        // delay permission request a little until the page is fully loaded
+        window.addEventListener('load', () => {
+            navigator.mediaDevices.getUserMedia({audio: true}).then((stream)=>{
+                updateProperties();
+                stream.getTracks().forEach(track => {
+                    track.stop();
+                });
+                console.log("Permission Request");
             });
-            console.log("Permission Request");
-            updateProperties();
         });
-    </script>
+    </script> -->
 </body>
 </html>

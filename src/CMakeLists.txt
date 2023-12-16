@@ -1,6 +1,7 @@
 # project(AdvancedVoice)
 
-add_executable(AdvancedVoice main2.cpp)
+
+add_executable(AdvancedVoice main2.cpp client.hpp RingBuffer.hpp audioBuffer.hpp)
 set_target_properties(AdvancedVoice PROPERTIES 
     CXX_STANDARD 17
     OUTPUT_NAME server
