@@ -47,22 +47,8 @@ function getMicStream(stream){
     isStreaming = true
     audioStream = stream
 
-    //Connect to websocket and request peer connection
-    createConnection(userID).then((ws)=>{
-        console.log("Websocket connected, requesting voice!");
-        startButtonElement.disabled = true;
-        ws.onclose = () =>{
-            console.warn('WebSocket disconnected');
-            startButtonElement.disabled = false;
-            stop();
-        }
-        requestVoice(ws, userID);
-
-    }).catch((err) => {
-        console.error(err);
-        alert("Error while connecting to server, Please reload!")
-        startButtonElement.disabled = false;
-    });
+    //request peer connection
+    requestVoice(ws, userID);
 
     // audioElement.srcObject = stream
 }
@@ -88,6 +74,7 @@ function changeOutput(){
 function startConnection() {
     updateAudioSettings();
     console.log(`Connecting as ${userName} with id ${userID}`);
+    startButtonElement.disabled = true;
 
     //get mic stream
     navigator.mediaDevices.enumerateDevices().then((devices) => {
@@ -106,7 +93,7 @@ function startConnection() {
 
         console.log(constraints);
 
-        navigator.mediaDevices.getUserMedia(constraints).then(getMicStream).catch(err => { console.error(err) });
+        navigator.mediaDevices.getUserMedia(constraints).then(getMicStream).catch(err => { console.error(err); startButtonElement.disabled = false;});
     });
 
     // Start the connection here
@@ -175,6 +162,9 @@ function updateProperties() {
 }
 
 function updateConnectedUsers(users) {
+    if(users === undefined)
+        return;
+
     connectedUsers = users;
     const connectedUsersDiv = document.getElementById('connectedUsers');
     connectedUsersDiv.innerHTML = '<h2>Connected Users</h2>';
@@ -194,7 +184,7 @@ function updateConnectedUsers(users) {
 
 // Example: Call updateConnectedUsers with a list of connected users
 const exampleConnectedUsers = ['User1', 'User2', 'User3'];
-updateConnectedUsers(exampleConnectedUsers);
+// updateConnectedUsers(exampleConnectedUsers);
 
 // delay permission request a little until the page is fully loaded
 window.addEventListener('load', () => {
@@ -205,7 +195,30 @@ window.addEventListener('load', () => {
         });
         console.log("Permission Request");
     });
+
+    //Connect to websocket 
+    createConnection(userID).then((ws)=>{
+        console.log("Websocket connected, requesting voice!");
+        ws.onclose = () =>{
+            console.warn('WebSocket disconnected');
+            startButtonElement.disabled = false;
+            stop();
+        }
+    }).catch((err) => {
+        console.error(err);
+        alert("Error while connecting to server, Please reload!")
+        startButtonElement.disabled = false;
+    });
 });
+
+setInterval(() => {
+    if(ws && ws.readyState === WebSocket.OPEN){
+        ws.send(JSON.stringify({
+            id: userID,
+            type: "users",
+        }));
+    }
+}, 5000)
 
 function requestVoice(ws, id){
     ws.send(JSON.stringify({
@@ -230,7 +243,7 @@ function createConnection(userID){
               return;
             const message = JSON.parse(e.data);
             console.log(message);
-            const {id, type} = message;
+            type = message.type;
 
             if('error' in message){
                 console.warn(`Internal error! ${message.error}`)
@@ -247,6 +260,7 @@ function createConnection(userID){
 
             switch(type) {
                 case 'offer':
+                    id = message.id;
                     if(!peerConnection){
                         console.log(`Received offer from ${id}, creating answer`)
                         peerConnection = createPeerConnection(ws, id);
@@ -262,7 +276,7 @@ function createConnection(userID){
                         type: message.type
                     });
                 case 'users':
-
+                    updateConnectedUsers(message.users);
             }
 
         }

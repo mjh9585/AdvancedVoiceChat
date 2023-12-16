@@ -118,7 +118,7 @@ int main() {
 
 	try {
 		//set WebRTC logging level
-		rtc::InitLogger(rtc::LogLevel::Debug);
+		rtc::InitLogger(rtc::LogLevel::Info);
 
 		// arg parsing
 		// HA, LOL 

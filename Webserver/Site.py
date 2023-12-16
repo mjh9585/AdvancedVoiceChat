@@ -76,6 +76,11 @@ def handle_ws(ws, userid):
             receiver_id = parsedMessage.get('id')
             messageType = parsedMessage.get('type')
 
+            if(messageType == "users"):
+                us = [users[u]['username'] for u in users]
+                ws.send(json.dumps({"type": "users", "users": us}))
+                continue
+
             if receiver_id in users:
                 print(f"{userid}[{users[userid]['username']}] -> {receiver_id}[{users[receiver_id]['username']}]: {parsedMessage}")
                 # Forward the message to the specified user
