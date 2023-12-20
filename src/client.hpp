@@ -5,6 +5,7 @@
 #include <memory>
 
 #include "rtc/rtc.hpp"
+#include "nlohmann/json.hpp"
 #include "opus.h"
 #include "audioBuffer.hpp"
 
@@ -142,8 +143,8 @@ public:
     void setReceiveTrack(std::shared_ptr<rtc::Track> track){receiveTrack = track;};
     void setSendTrack(std::shared_ptr<rtc::Track> track){sendTrack = track;};
 
-    AudioBuffer* getReceiveBuffer(){return &reciveBuffer;};
-    AudioBuffer* getSendBuffer(){return &transmitBuffer;};
+    std::shared_ptr<AudioBuffer> getReceiveBuffer(){return reciveBuffer;};
+    std::shared_ptr<AudioBuffer> getSendBuffer(){return transmitBuffer;};
 
 private:
     //states
@@ -160,8 +161,8 @@ private:
     std::shared_ptr<rtc::Track> receiveTrack;
     std::shared_ptr<rtc::Track> sendTrack;
 
-    AudioBuffer reciveBuffer = AudioBuffer(48000);
-    AudioBuffer transmitBuffer = AudioBuffer(48000);
+    std::shared_ptr<AudioBuffer> reciveBuffer = std::make_shared<AudioBuffer>(48000);
+    std::shared_ptr<AudioBuffer> transmitBuffer = std::make_shared<AudioBuffer>(48000);
     
     void handleIncomingAudio(rtc::binary message){
         opus_int16 raw[FRAME_SIZE*CHANNELS];

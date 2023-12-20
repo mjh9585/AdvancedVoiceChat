@@ -4,48 +4,53 @@
 
 class MixingMatrix
 {
+    struct AudioPair
+    {
+        int index;
+        std::string id;
+        std::shared_ptr<AudioBuffer> src;
+        std::shared_ptr<AudioBuffer> dst;
+        float *mixingBuffer;
+    };
+
 private:
-    std::vector<Client> clients;
-    std::vector<float> transfer_in;
-    std::vector<float> transfer_out;
+    std::vector<AudioPair> streams;
+    float *workingBuffer;
+    // std::vector<float> transfer_out;
     std::vector<std::vector<float>> coefficients;
     const int sampleSize;
-    int num_clients;
+    int numStreams = 0;
+
 public:
-    MixingMatrix(int num_clients, int sampleSize):sampleSize(sampleSize)
+    MixingMatrix(int sampleSize):sampleSize(sampleSize)
     {
-        transfer_in.reserve(sampleSize);
-        transfer_out.reserve(sampleSize);
+        workingBuffer = new float[sampleSize];
+        // workingBuffer.reserve(sampleSize);
+        // transfer_out.reserve(sampleSize);
     };
-    ~MixingMatrix(){};
+    ~MixingMatrix(){
+        delete workingBuffer;
+        for(auto v : streams){
+            delete v.mixingBuffer;
+        }
+        streams.erase(streams.begin(), streams.end());
+    };
     void update();
-    void inline mix(std::vector<float> in, std::vector<float> out, float c);
+    void inline mix(const float *in, float *out, float c);
     void addClient(Client user);
+    void addAudioPair(std::string id, std::shared_ptr<AudioBuffer> src, std::shared_ptr<AudioBuffer> dst);
     //void removeClient(Client user);
     void modifyCoefficient(int row, int col, float val);
+
+    void printCoefficients(){
+        std::cout << "[" << std::endl;
+        for(int row = 0; row < numStreams; row++){
+            std::cout << "  [";
+            for(int col = 0; col < numStreams; col++){
+                printf("%f, ", coefficients[row][col]);
+            }
+            std::cout << "]," << std::endl;
+        }
+        std::cout << "]" << std::endl;
+    };
 };
-
-// mixingMatrix::mixingMatrix(int sampleSize):sampleSize(sampleSize)
-// {
-//     // for (uint8_t i = 0; i < num_users; i++) //intialize coefficients matrix to be of identity matrix
-//     // {
-//     //     for (uint8_t j = 0; j < num_users; j++)
-//     //     {
-//     //         if (i == j)
-//     //         {
-//     //             coefficients[i][j] = 0.0;
-//     //         }
-//     //         else
-//     //         {
-//     //             coefficients[i][j] = 1.0;
-//     //         }
-//     //     }
-        
-//     // }
-    
-
-// }
-
-// mixingMatrix::~mixingMatrix()
-// {
-// }
