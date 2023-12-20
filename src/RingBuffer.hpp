@@ -127,9 +127,9 @@ public:
     }
 
     void printBuff() {
-        printf("Head: %ld, Tail: %ld\r\n[", head_, tail_);
+        printf("Head: %ld, Tail: %ld, Size: %ld\r\n[", head_, tail_, count_);
         for(int i = 0; i < max_size_; i++){
-            printf("%d ", buf_[i]);
+            printf("%f ", buf_[i]);
         }
         printf("]\r\n");
     }
